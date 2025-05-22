@@ -14,12 +14,20 @@ from fastmcp import FastMCP, Context
 mcp = FastMCP("Weather MCP 🌤️")
 
 # AccuWeather API configuration
-API_KEY = os.environ.get("API_KEY", "FgRNkenGLf3Guq67iAtz6ngyx356ojve")
-print(f"Using AccuWeather API key: {API_KEY}")
+DEFAULT_API_KEY = "FgRNkenGLf3Guq67iAtz6ngyx356ojve"
 BASE_URL = "http://dataservice.accuweather.com"
 
 # Create an async HTTP client
 http_client = httpx.AsyncClient(timeout=10.0)
+
+def get_api_key(ctx: Context = None) -> str:
+    """Get the API key from context or environment variables."""
+    # First try to get from context (user configuration)
+    if ctx and hasattr(ctx, 'config') and ctx.config and 'API_KEY' in ctx.config:
+        return ctx.config['API_KEY']
+
+    # Then try environment variable
+    return os.environ.get("API_KEY", DEFAULT_API_KEY)
 
 @mcp.tool()
 async def search_location(
@@ -36,7 +44,7 @@ async def search_location(
         # Call the AccuWeather API to search for locations
         url = f"{BASE_URL}/locations/v1/cities/search"
         params = {
-            "apikey": API_KEY,
+            "apikey": get_api_key(ctx),
             "q": query
         }
 
@@ -77,7 +85,7 @@ async def get_current_weather(
         # Call the AccuWeather API to get current conditions
         url = f"{BASE_URL}/currentconditions/v1/{location_key}"
         params = {
-            "apikey": API_KEY,
+            "apikey": get_api_key(ctx),
             "details": "true"
         }
 
@@ -138,7 +146,7 @@ async def get_forecast(
         # Call the AccuWeather API to get the forecast
         url = f"{BASE_URL}/forecasts/v1/daily/{days}day/{location_key}"
         params = {
-            "apikey": API_KEY,
+            "apikey": get_api_key(ctx),
             "metric": "true"
         }
 
@@ -264,6 +272,11 @@ if __name__ == "__main__":
     path_prefix = os.environ.get("PATH_PREFIX", "/mcp")
 
     print(f"Starting Weather MCP server on {host}:{port}{path_prefix}")
+    print(f"Default API key: {DEFAULT_API_KEY}")
+    print(f"Environment API key: {os.environ.get('API_KEY', 'Not set')}")
+
+    # Configure the server to accept the API_KEY from the client
+    mcp.configure_context(lambda config: {"API_KEY": config.get("API_KEY", DEFAULT_API_KEY)})
 
     # Run the server with HTTP transport
     mcp.run(transport="streamable-http", host=host, port=port, path=path_prefix)

@@ -9,6 +9,7 @@ startCommand:
         title: "AccuWeather API Key"
         description: "Your AccuWeather API key"
         default: "FgRNkenGLf3Guq67iAtz6ngyx356ojve"
+    required: []
 
 build:
   dockerfile: Dockerfile
