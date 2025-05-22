@@ -5,7 +5,8 @@ Weather MCP - A FastMCP server for getting weather information using AccuWeather
 
 import asyncio
 import httpx
-from typing import Annotated, List, Optional
+import os
+from typing import Annotated, List
 from pydantic import Field
 from fastmcp import FastMCP, Context
 
@@ -13,7 +14,7 @@ from fastmcp import FastMCP, Context
 mcp = FastMCP("Weather MCP 🌤️")
 
 # AccuWeather API configuration
-API_KEY = "FgRNkenGLf3Guq67iAtz6ngyx356ojve"
+API_KEY = os.environ.get("API_KEY", "FgRNkenGLf3Guq67iAtz6ngyx356ojve")
 BASE_URL = "http://dataservice.accuweather.com"
 
 # Create an async HTTP client
@@ -256,5 +257,9 @@ async def get_weather_summary(
         return f"Error getting weather summary: {str(e)}"
 
 if __name__ == "__main__":
+    # Get configuration from environment variables
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", 8000))
+
     # Run the server with HTTP transport
-    mcp.run(transport="streamable-http", host="127.0.0.1", port=8000, path="/mcp")
+    mcp.run(transport="streamable-http", host=host, port=port, path="/mcp")

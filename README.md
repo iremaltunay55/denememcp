@@ -17,10 +17,12 @@ A Minimum Consumable Product (MCP) for getting weather information using the Acc
 
 ## Installation
 
+### Local Installation
+
 1. Install the required packages:
 
 ```bash
-pip install fastmcp httpx
+pip install -r requirements.txt
 ```
 
 2. Run the MCP server:
@@ -28,6 +30,24 @@ pip install fastmcp httpx
 ```bash
 python weather_mcp.py
 ```
+
+### Docker Installation
+
+1. Build the Docker image:
+
+```bash
+docker build -t weather-mcp .
+```
+
+2. Run the Docker container:
+
+```bash
+docker run -p 8000:8000 weather-mcp
+```
+
+### Smithery Deployment
+
+This MCP is configured for deployment on Smithery. The `smithery.yaml` file contains the necessary configuration for Smithery to build and run the MCP server.
 
 ## Usage
 

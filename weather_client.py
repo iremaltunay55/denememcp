@@ -4,12 +4,16 @@ Weather MCP Client - Example client for the Weather MCP
 """
 
 import asyncio
+import os
 import sys
 from fastmcp import Client
 
 async def main():
+    # Get server URL from environment variable or use default
+    server_url = os.environ.get("MCP_SERVER_URL", "http://127.0.0.1:8000/mcp")
+
     # Create a client connected to the Weather MCP via HTTP
-    client = Client("http://127.0.0.1:8000/mcp")
+    client = Client(server_url)
 
     async with client:
         # Get command line arguments
