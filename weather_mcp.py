@@ -15,6 +15,7 @@ mcp = FastMCP("Weather MCP 🌤️")
 
 # AccuWeather API configuration
 API_KEY = os.environ.get("API_KEY", "FgRNkenGLf3Guq67iAtz6ngyx356ojve")
+print(f"Using AccuWeather API key: {API_KEY}")
 BASE_URL = "http://dataservice.accuweather.com"
 
 # Create an async HTTP client
@@ -260,6 +261,9 @@ if __name__ == "__main__":
     # Get configuration from environment variables
     host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", 8000))
+    path_prefix = os.environ.get("PATH_PREFIX", "/mcp")
+
+    print(f"Starting Weather MCP server on {host}:{port}{path_prefix}")
 
     # Run the server with HTTP transport
-    mcp.run(transport="streamable-http", host=host, port=port, path="/mcp")
+    mcp.run(transport="streamable-http", host=host, port=port, path=path_prefix)

@@ -4,21 +4,11 @@ startCommand:
   configSchema:
     type: object
     properties:
-      api_key:
+      API_KEY:
         type: string
         title: "AccuWeather API Key"
         description: "Your AccuWeather API key"
         default: "FgRNkenGLf3Guq67iAtz6ngyx356ojve"
-      port:
-        type: integer
-        title: "Port"
-        description: "Port to run the server on"
-        default: 8000
-      host:
-        type: string
-        title: "Host"
-        description: "Host to bind the server to"
-        default: "0.0.0.0"
 
 build:
   dockerfile: Dockerfile
