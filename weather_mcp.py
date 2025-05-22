@@ -17,8 +17,8 @@ mcp = FastMCP("Weather MCP 🌤️")
 DEFAULT_API_KEY = "FgRNkenGLf3Guq67iAtz6ngyx356ojve"
 BASE_URL = "http://dataservice.accuweather.com"
 
-# Create an async HTTP client
-http_client = httpx.AsyncClient(timeout=10.0)
+# Create an async HTTP client with a shorter timeout for faster responses
+http_client = httpx.AsyncClient(timeout=5.0)
 
 def get_api_key(ctx: Context = None) -> str:
     """Get the API key from context or environment variables."""
@@ -38,14 +38,13 @@ async def search_location(
     Search for a location by name or postal code and return matching locations.
     Returns a list of locations with their keys, which can be used in other weather tools.
     """
-    await ctx.info(f"Searching for location: {query}")
-
     try:
         # Call the AccuWeather API to search for locations
         url = f"{BASE_URL}/locations/v1/cities/search"
         params = {
             "apikey": get_api_key(ctx),
-            "q": query
+            "q": query,
+            "limit": 5  # Limit to 5 results for faster response
         }
 
         response = await http_client.get(url, params=params)
@@ -64,11 +63,7 @@ async def search_location(
 
         return results
 
-    except httpx.HTTPStatusError as e:
-        await ctx.error(f"API error: {e.response.status_code} - {e.response.text}")
-        return [{"error": f"API error: {e.response.status_code}"}]
     except Exception as e:
-        await ctx.error(f"Error searching for location: {str(e)}")
         return [{"error": str(e)}]
 
 @mcp.tool()
@@ -79,14 +74,12 @@ async def get_current_weather(
     """
     Get current weather conditions for a location using its AccuWeather location key.
     """
-    await ctx.info(f"Getting current weather for location key: {location_key}")
-
     try:
         # Call the AccuWeather API to get current conditions
         url = f"{BASE_URL}/currentconditions/v1/{location_key}"
         params = {
             "apikey": get_api_key(ctx),
-            "details": "true"
+            "details": "false"  # Use minimal details for faster response
         }
 
         response = await http_client.get(url, params=params)
@@ -99,7 +92,7 @@ async def get_current_weather(
         # Extract the current conditions
         current = data[0]
 
-        # Format the results
+        # Format the results with minimal data for faster response
         result = {
             "temperature": {
                 "value": current.get("Temperature", {}).get("Metric", {}).get("Value"),
@@ -107,54 +100,38 @@ async def get_current_weather(
             },
             "weather_text": current.get("WeatherText"),
             "is_day_time": current.get("IsDayTime"),
-            "relative_humidity": current.get("RelativeHumidity"),
-            "wind": {
-                "speed": {
-                    "value": current.get("Wind", {}).get("Speed", {}).get("Metric", {}).get("Value"),
-                    "unit": current.get("Wind", {}).get("Speed", {}).get("Metric", {}).get("Unit")
-                },
-                "direction": current.get("Wind", {}).get("Direction", {}).get("Localized")
-            },
-            "uv_index": current.get("UVIndex"),
-            "uv_index_text": current.get("UVIndexText"),
             "precipitation": current.get("HasPrecipitation"),
-            "precipitation_type": current.get("PrecipitationType"),
             "observation_time": current.get("LocalObservationDateTime")
         }
 
         return result
 
-    except httpx.HTTPStatusError as e:
-        await ctx.error(f"API error: {e.response.status_code} - {e.response.text}")
-        return {"error": f"API error: {e.response.status_code}"}
     except Exception as e:
-        await ctx.error(f"Error getting current weather: {str(e)}")
         return {"error": str(e)}
 
 @mcp.tool()
 async def get_forecast(
     location_key: Annotated[str, Field(description="AccuWeather location key (use search_location to find)")],
     ctx: Context,
-    days: Annotated[int, Field(description="Number of days for forecast (1-5)", ge=1, le=5)] = 5
+    days: Annotated[int, Field(description="Number of days for forecast (1-5)", ge=1, le=5)] = 1
 ) -> dict:
     """
     Get a daily weather forecast for a location using its AccuWeather location key.
     """
-    await ctx.info(f"Getting {days}-day forecast for location key: {location_key}")
-
     try:
-        # Call the AccuWeather API to get the forecast
+        # Call the AccuWeather API to get the forecast (default to 1 day for faster response)
         url = f"{BASE_URL}/forecasts/v1/daily/{days}day/{location_key}"
         params = {
             "apikey": get_api_key(ctx),
-            "metric": "true"
+            "metric": "true",
+            "details": "false"  # Use minimal details for faster response
         }
 
         response = await http_client.get(url, params=params)
         response.raise_for_status()
         data = response.json()
 
-        # Format the results
+        # Format the results with minimal data for faster response
         result = {
             "headline": data.get("Headline", {}).get("Text"),
             "daily_forecasts": []
@@ -164,37 +141,17 @@ async def get_forecast(
             daily = {
                 "date": forecast.get("Date"),
                 "temperature": {
-                    "min": {
-                        "value": forecast.get("Temperature", {}).get("Minimum", {}).get("Value"),
-                        "unit": forecast.get("Temperature", {}).get("Minimum", {}).get("Unit")
-                    },
-                    "max": {
-                        "value": forecast.get("Temperature", {}).get("Maximum", {}).get("Value"),
-                        "unit": forecast.get("Temperature", {}).get("Maximum", {}).get("Unit")
-                    }
+                    "min": forecast.get("Temperature", {}).get("Minimum", {}).get("Value"),
+                    "max": forecast.get("Temperature", {}).get("Maximum", {}).get("Value")
                 },
-                "day": {
-                    "icon_phrase": forecast.get("Day", {}).get("IconPhrase"),
-                    "has_precipitation": forecast.get("Day", {}).get("HasPrecipitation"),
-                    "precipitation_type": forecast.get("Day", {}).get("PrecipitationType"),
-                    "precipitation_intensity": forecast.get("Day", {}).get("PrecipitationIntensity")
-                },
-                "night": {
-                    "icon_phrase": forecast.get("Night", {}).get("IconPhrase"),
-                    "has_precipitation": forecast.get("Night", {}).get("HasPrecipitation"),
-                    "precipitation_type": forecast.get("Night", {}).get("PrecipitationType"),
-                    "precipitation_intensity": forecast.get("Night", {}).get("PrecipitationIntensity")
-                }
+                "day_phrase": forecast.get("Day", {}).get("IconPhrase"),
+                "night_phrase": forecast.get("Night", {}).get("IconPhrase")
             }
             result["daily_forecasts"].append(daily)
 
         return result
 
-    except httpx.HTTPStatusError as e:
-        await ctx.error(f"API error: {e.response.status_code} - {e.response.text}")
-        return {"error": f"API error: {e.response.status_code}"}
     except Exception as e:
-        await ctx.error(f"Error getting forecast: {str(e)}")
         return {"error": str(e)}
 
 @mcp.tool()
@@ -203,11 +160,8 @@ async def get_weather_summary(
     ctx: Context
 ) -> str:
     """
-    Get a complete weather summary for a location, including current conditions and forecast.
-    This is a convenience tool that combines search_location, get_current_weather, and get_forecast.
+    Get a simple weather summary for a location.
     """
-    await ctx.info(f"Getting weather summary for: {location}")
-
     try:
         # First, search for the location
         locations = await search_location(location, ctx)
@@ -218,51 +172,22 @@ async def get_weather_summary(
         # Use the first location
         location_data = locations[0]
         location_key = location_data["key"]
-        location_name = f"{location_data['name']}, {location_data['administrative_area']}, {location_data['country']}"
+        location_name = f"{location_data['name']}, {location_data['country']}"
 
         # Get current weather
         current = await get_current_weather(location_key, ctx)
 
         if "error" in current:
-            return f"Error getting current weather for {location_name}: {current['error']}"
+            return f"Error getting current weather: {current['error']}"
 
-        # Get forecast
-        forecast = await get_forecast(location_key, ctx)
-
-        if "error" in forecast:
-            return f"Error getting forecast for {location_name}: {forecast['error']}"
-
-        # Format a nice summary
+        # Format a simple summary
         summary = f"Weather for {location_name}:\n\n"
-
-        # Current conditions
-        summary += "CURRENT CONDITIONS:\n"
-        summary += f"• Temperature: {current['temperature']['value']}°{current['temperature']['unit']}\n"
-        summary += f"• Conditions: {current['weather_text']}\n"
-        summary += f"• Humidity: {current['relative_humidity']}%\n"
-        summary += f"• Wind: {current['wind']['speed']['value']} {current['wind']['speed']['unit']} {current['wind']['direction']}\n"
-        summary += f"• UV Index: {current['uv_index']} ({current['uv_index_text']})\n"
-
-        # Forecast
-        summary += "\nFORECAST:\n"
-        summary += f"• {forecast['headline']}\n\n"
-
-        for i, day in enumerate(forecast['daily_forecasts']):
-            date = day['date'].split('T')[0]
-            summary += f"Day {i+1} ({date}):\n"
-            summary += f"• Temperature: {day['temperature']['min']['value']}°{day['temperature']['min']['unit']} to {day['temperature']['max']['value']}°{day['temperature']['max']['unit']}\n"
-            summary += f"• Day: {day['day']['icon_phrase']}\n"
-            summary += f"• Night: {day['night']['icon_phrase']}\n"
-
-            if day['day']['has_precipitation']:
-                summary += f"• Precipitation: {day['day']['precipitation_type']} ({day['day']['precipitation_intensity']})\n"
-
-            summary += "\n"
+        summary += f"Temperature: {current['temperature']['value']}°{current['temperature']['unit']}\n"
+        summary += f"Conditions: {current['weather_text']}\n"
 
         return summary
 
     except Exception as e:
-        await ctx.error(f"Error getting weather summary: {str(e)}")
         return f"Error getting weather summary: {str(e)}"
 
 if __name__ == "__main__":
@@ -275,8 +200,19 @@ if __name__ == "__main__":
     print(f"Default API key: {DEFAULT_API_KEY}")
     print(f"Environment API key: {os.environ.get('API_KEY', 'Not set')}")
 
-    # Configure the server to accept the API_KEY from the client
+    # Configure the server with optimized settings
     mcp.configure_context(lambda config: {"API_KEY": config.get("API_KEY", DEFAULT_API_KEY)})
 
-    # Run the server with HTTP transport
-    mcp.run(transport="streamable-http", host=host, port=port, path=path_prefix)
+    # Set server options for better performance
+    server_options = {
+        "transport": "streamable-http",
+        "host": host,
+        "port": port,
+        "path": path_prefix,
+        # Add performance options
+        "workers": 1,  # Use a single worker for faster startup
+        "log_level": "warning",  # Reduce logging overhead
+    }
+
+    # Run the server with optimized settings
+    mcp.run(**server_options)

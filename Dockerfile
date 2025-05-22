@@ -5,7 +5,7 @@ WORKDIR /app
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install dependencies
+# Install dependencies with optimized settings
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
@@ -18,6 +18,8 @@ EXPOSE 8000
 ENV HOST=0.0.0.0
 ENV PORT=8000
 ENV PATH_PREFIX=/mcp
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-# Command to run the application
-CMD ["python", "weather_mcp.py"]
+# Command to run the application with optimized Python settings
+CMD ["python", "-O", "weather_mcp.py"]
